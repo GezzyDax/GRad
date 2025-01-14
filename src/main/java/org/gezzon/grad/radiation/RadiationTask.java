@@ -10,6 +10,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.NamespacedKey;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
+import org.gezzon.grad.Grad;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,13 +29,46 @@ import java.util.UUID;
 public class RadiationTask extends BukkitRunnable {
 
     private final RadiationManager manager;
-
     // Отслеживаем индивидуальные таймеры урона для каждого игрока:
     //   UUID -> время до следующего удара (в секундах)
     private final Map<UUID, Double> damageTimers = new HashMap<>();
 
     public RadiationTask(RadiationManager manager) {
         this.manager = manager;
+    }
+    /**
+     * Проверяет, защищён ли игрок от конкретного уровня радиации (1..5).
+     *
+     * Например, если level = 2, то ищем тег protect_rad_2
+     * на любом предмете брони игрока.
+     */
+    private boolean isPlayerProtectedFromLevel(Player player, int level) {
+        // Собираем нужный ключ
+        String desiredTag = "protect_rad_" + level;
+
+        // Проверяем весь сет брони (шлем, нагрудник, поножи, ботинки)
+        ItemStack[] armor = player.getEquipment().getArmorContents();
+        if (armor == null) return false;
+
+        for (ItemStack piece : armor) {
+            if (piece == null) continue;
+            ItemMeta meta = piece.getItemMeta();
+            if (meta == null) continue;
+
+            // Проверяем PersistentDataContainer
+            if (meta.getPersistentDataContainer() != null) {
+                // Создаём NamespacedKey (обычно по вашему плагину)
+                NamespacedKey key = new NamespacedKey(Grad.getInstance(), "protect_rad_level");
+
+                // Считаем сохранённое значение (например, строку)
+                String storedValue = meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
+                if (storedValue != null && storedValue.equalsIgnoreCase(desiredTag)) {
+                    // Нашли нужный тег
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Override
@@ -43,6 +81,7 @@ public class RadiationTask extends BukkitRunnable {
                 manager.setPlayerRadiation(uuid, 0.0);
                 continue;
             }
+
 
             // 1) Считаем, сколько радиации игрок набирает за эту "тик" (1 секунду)
             double newRadiation = calculateRadiationForPlayer(player);
@@ -152,4 +191,5 @@ public class RadiationTask extends BukkitRunnable {
 
         return total;
     }
+
 }

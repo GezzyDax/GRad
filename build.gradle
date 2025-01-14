@@ -3,7 +3,21 @@ plugins {
 }
 
 group = 'org.gezzon'
-version = '0.0.1'
+
+// Функция для получения версии из Git
+def getGitVersion() {
+    def stdout = new ByteArrayOutputStream()
+    exec {
+        commandLine 'git', 'describe', '--tags', '--always'
+        standardOutput = stdout
+    }
+    return stdout.toString().trim()
+}
+
+// Установить версию проекта на основе Git
+version = getGitVersion()
+
+println "Using Git Version: $version"
 
 repositories {
     mavenCentral()
@@ -23,9 +37,7 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT")
     compileOnly group: 'com.sk89q.worldedit', name: 'worldedit-bukkit', version: '7.3.1'
-    // https://mvnrepository.com/artifact/com.sk89q.worldguard/worldguard-bukkit
     compileOnly group: 'com.sk89q.worldguard', name: 'worldguard-bukkit', version: '7.0.9'
-
 }
 
 def targetJavaVersion = 21

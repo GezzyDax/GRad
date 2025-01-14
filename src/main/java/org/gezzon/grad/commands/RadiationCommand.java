@@ -70,6 +70,9 @@ public class RadiationCommand implements CommandExecutor, TabCompleter {
             case "god":
                 handleGod(sender);
                 break;
+            case "clear":
+                handleClear(sender,args);
+                break;
             case "help":
                 int page = 1;
                 if (args.length >= 2) {
@@ -101,6 +104,7 @@ public class RadiationCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§7/radiation near <radius> §f- Найти источники в заданном радиусе.");
         sender.sendMessage("§7/radiation god §f- Включить/выключить 'бог-режим' от радиации.");
         sender.sendMessage("§7/radiation help [page] §f- Показать помощь.");
+        sender.sendMessage("§7/radiation clear [player] $f- Очистить уровень радиации");
     }
 
     /**
@@ -357,6 +361,39 @@ public class RadiationCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
+     * /radiation clear [player]
+     * - Без аргументов: сброс радиации текущему игроку.
+     * - С аргументом: сброс радиации целевому игроку.
+     */
+    private void handleClear(CommandSender sender, String[] args) {
+        // /radiation clear
+        if (args.length == 1) {
+            if (sender instanceof Player) {
+                Player player = (Player) sender;
+                radiationManager.setPlayerRadiation(player.getUniqueId(), 0.0);
+                sender.sendMessage("§aВаша радиация обнулена.");
+            } else {
+                sender.sendMessage("§cВы должны указать имя игрока, если вызываете команду из консоли.");
+            }
+            return;
+        }
+
+        // /radiation clear <playerName>
+        if (args.length == 2) {
+            Player target = Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage("§cИгрок " + args[1] + " не найден.");
+                return;
+            }
+            radiationManager.setPlayerRadiation(target.getUniqueId(), 0.0);
+            sender.sendMessage("§aРадиация обнулена для " + target.getName());
+            return;
+        }
+
+        // Если аргументов больше, чем нужно
+        sender.sendMessage("§cИспользование: /radiation clear [player]");
+    }
+    /**
      * /radiation god
      * Включает/выключает "бог-режим" у игрока, чтобы не получать урон от радиации
      */
@@ -402,6 +439,14 @@ public class RadiationCommand implements CommandExecutor, TabCompleter {
                 String idStr = String.valueOf(src.getId());
                 if (idStr.startsWith(args[1])) {
                     completions.add(idStr);
+                }
+            }
+        }
+        else if (args.length == 2 && args[0].equalsIgnoreCase("clear")) {
+            // Предлагаем список онлайн-игроков
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (p.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
+                    completions.add(p.getName());
                 }
             }
         }

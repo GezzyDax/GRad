@@ -18,11 +18,15 @@ public class Grad extends JavaPlugin {
     private RadiationManager radiationManager;
     private RadiationTask radiationTask;
 
+
+
+    private static Grad instance;
+
     @Override
     public void onEnable() {
         // Создаём/сохраняем config.yml по умолчанию, если его нет
         saveDefaultConfig();
-
+        instance = this;
         // Создаём менеджер радиации, читаем конфигурацию, загружаем источники
         radiationManager = new RadiationManager(this);
         radiationManager.init();
@@ -53,5 +57,8 @@ public class Grad extends JavaPlugin {
      */
     public RadiationManager getRadiationManager() {
         return radiationManager;
+    }
+    public static Grad getInstance() {
+        return instance;
     }
 }
