@@ -1,0 +1,10 @@
+name: Grad
+version: '0.0.1'
+main: org.gezzon.grad.Grad
+api-version: '1.20'
+authors: [ Gezzy ]
+description: Plugin for add radiation
+commands:
+  radiation:
+    description: Manage radiation sources and player interactions.
+    usage: /<command> [list|add|del|edit|meter|view|near|god|help]

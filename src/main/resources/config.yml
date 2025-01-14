@@ -1,0 +1,27 @@
+radiation:
+  levels:
+    - level: 1
+      base_accumulation: 0.3
+      damage_start: 20
+      damage_interval: 10
+      damage_amount: 1
+    - level: 2
+      base_accumulation: 0.6
+      damage_start: 35
+      damage_interval: 10
+      damage_amount: 2
+    - level: 3
+      base_accumulation: 0.9
+      damage_start: 50
+      damage_interval: 5
+      damage_amount: 2
+    - level: 4
+      base_accumulation: 1.2
+      damage_start: 70
+      damage_interval: 3
+      damage_amount: 2
+    - level: 5
+      base_accumulation: 8
+      damage_start: 80
+      damage_interval: 3
+      damage_amount: 5
