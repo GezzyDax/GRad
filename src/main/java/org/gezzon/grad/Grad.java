@@ -3,6 +3,7 @@ package org.gezzon.grad;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.flags.IntegerFlag;
 import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.gezzon.grad.radiation.RadiationManager;
 import org.gezzon.grad.radiation.RadiationTask;
@@ -48,7 +49,8 @@ public class Grad extends JavaPlugin {
         // Регистрируем единую команду /radiation
         getCommand("radiation").setExecutor(new RadiationCommand(this, radiationManager));
         getCommand("radiation").setTabCompleter(new RadiationCommand(this, radiationManager));
-        registerFlags();
+        Bukkit.getScheduler().runTaskLater(this, this::registerFlags, 1L);
+
         getLogger().info("Grad плагин включён!");
     }
 
@@ -64,6 +66,7 @@ public class Grad extends JavaPlugin {
             e.printStackTrace();
         }
     }
+
 
 
 
