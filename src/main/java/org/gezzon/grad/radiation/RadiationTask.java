@@ -37,40 +37,6 @@ public class RadiationTask extends BukkitRunnable {
     public RadiationTask(RadiationManager manager) {
         this.manager = manager;
     }
-    /**
-     * Проверяет, защищён ли игрок от конкретного уровня радиации (1..5).
-     *
-     * Например, если level = 2, то ищем тег protect_rad_2
-     * на любом предмете брони игрока.
-     */
-    private boolean isPlayerProtectedFromLevel(Player player, int level) {
-        // Собираем нужный ключ
-        String desiredTag = "protect_rad_" + level;
-
-        // Проверяем весь сет брони (шлем, нагрудник, поножи, ботинки)
-        ItemStack[] armor = player.getEquipment().getArmorContents();
-        if (armor == null) return false;
-
-        for (ItemStack piece : armor) {
-            if (piece == null) continue;
-            ItemMeta meta = piece.getItemMeta();
-            if (meta == null) continue;
-
-            // Проверяем PersistentDataContainer
-            if (meta.getPersistentDataContainer() != null) {
-                // Создаём NamespacedKey (обычно по вашему плагину)
-                NamespacedKey key = new NamespacedKey(Grad.getInstance(), "protect_rad_level");
-
-                // Считаем сохранённое значение (например, строку)
-                String storedValue = meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
-                if (storedValue != null && storedValue.equalsIgnoreCase(desiredTag)) {
-                    // Нашли нужный тег
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
 
     @Override
     public void run() {
@@ -204,7 +170,7 @@ public class RadiationTask extends BukkitRunnable {
      */
     private double calculateArmorProtection(Player player, int level) {
         // Формируем искомый тег
-        String desiredTag = "radiation_" + level;
+        String desiredTag = "protect_radiation_" + level;
 
         // Получаем сет брони игрока
         ItemStack[] armor = player.getEquipment().getArmorContents();

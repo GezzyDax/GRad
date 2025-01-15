@@ -62,17 +62,18 @@ public class Grad extends JavaPlugin {
     private void registerFlags() {
         FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
         try {
-            registry.register(RADIATION_1);
-            registry.register(RADIATION_2);
-            registry.register(RADIATION_3);
-            registry.register(RADIATION_4);
-            registry.register(RADIATION_5);
+            if (registry.get("radiation_1") == null) registry.register(RADIATION_1);
+            if (registry.get("radiation_2") == null) registry.register(RADIATION_2);
+            if (registry.get("radiation_3") == null) registry.register(RADIATION_3);
+            if (registry.get("radiation_4") == null) registry.register(RADIATION_4);
+            if (registry.get("radiation_5") == null) registry.register(RADIATION_5);
             getLogger().info("Custom WorldGuard flags registered successfully.");
         } catch (Exception e) {
             getLogger().warning("Failed to register custom WorldGuard flags!");
             e.printStackTrace();
         }
     }
+
 
 
     @Override
