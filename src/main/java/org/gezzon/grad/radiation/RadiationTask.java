@@ -15,24 +15,18 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.gezzon.grad.Grad;
-import com.sk89q.worldguard.protection.flags.StateFlag;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Периодическая задача, которая:
- *  1) Каждую секунду начисляет игрокам "порцию" радиации,
- *  2) При достижении определённых значений радиации наносит урон,
- *     с интервалом, зависящим от уровня радиации.
- */
 public class RadiationTask extends BukkitRunnable {
 
     private final RadiationManager manager;
-    // Отслеживаем индивидуальные таймеры урона для каждого игрока:
-    //   UUID -> время до следующего удара (в секундах)
     private final Map<UUID, Double> damageTimers = new HashMap<>();
+    private final Map<UUID, Integer> regionCache = new HashMap<>();
+    private final Map<UUID, Long> regionCacheTimestamps = new HashMap<>();
+    private static final long REGION_CACHE_LIFETIME = 1000L; // 1 секунда
 
     public RadiationTask(RadiationManager manager) {
         this.manager = manager;
@@ -43,26 +37,19 @@ public class RadiationTask extends BukkitRunnable {
         for (Player player : Bukkit.getOnlinePlayers()) {
             UUID uuid = player.getUniqueId();
 
-            // Если "бог-режим" включён — обнуляем радиацию и пропускаем урон
             if (manager.isGodMode(uuid)) {
                 manager.setPlayerRadiation(uuid, 0.0);
                 continue;
             }
 
-
-            // 1) Считаем, сколько радиации игрок набирает за эту "тик" (1 секунду)
             double newRadiation = calculateRadiationForPlayer(player);
             double currentRad = manager.getPlayerRadiation(uuid);
             double updatedRad = currentRad + newRadiation;
             manager.setPlayerRadiation(uuid, updatedRad);
 
-            // 2) Определяем, какой уровень радиации сейчас "активен"
-            //    (то есть, updatedRad >= damage_start конкретного уровня)
             double damage = 0.0;
-            double damageInterval = Double.MAX_VALUE; // если не найден уровень, урон = 0
+            double damageInterval = Double.MAX_VALUE;
 
-            // Перебираем уровни с 5 по 1 (сверху вниз), чтобы найти максимальный,
-            // под который подпадает текущий updatedRad
             for (int level = 5; level >= 1; level--) {
                 Map<String, Double> data = manager.getLevelData(level);
                 if (data == null) continue;
@@ -75,57 +62,41 @@ public class RadiationTask extends BukkitRunnable {
                 }
             }
 
-            // 3) Наносим урон, если damage > 0, но с учётом damageInterval
             if (damage > 0) {
                 double timeLeft = damageTimers.getOrDefault(uuid, 0.0);
                 if (timeLeft <= 0) {
-                    // Наступило время нанести урон
                     player.damage(damage);
-                    // Сбрасываем таймер
                     damageTimers.put(uuid, damageInterval);
                 } else {
-                    // Уменьшаем таймер до следующего удара
                     damageTimers.put(uuid, timeLeft - 1);
                 }
             } else {
-                // Если урона быть не должно, сбрасываем таймер
                 damageTimers.put(uuid, 0.0);
             }
         }
     }
 
-    /**
-     * Расчёт, сколько радиации игрок получит за 1 секунду:
-     *  - Суммируем вклад от всех сферических источников;
-     *  - Суммируем вклад от WorldGuard-регионов (radiation_1..radiation_5),
-     *    берём максимальный уровень в точке.
-     */
     private double calculateRadiationForPlayer(Player player) {
+        UUID uuid = player.getUniqueId();
         Location loc = player.getLocation();
         double totalRadiation = 0.0;
 
-        // 1) Вклад от всех сферических источников
         for (RadiationSource source : manager.getAllSources()) {
             if (!source.getCenter().getWorld().equals(loc.getWorld())) {
                 continue;
             }
-            double distance = source.getCenter().distance(loc);
-            if (distance <= source.getRadius()) {
-                double segment = source.getRadius() / 5.0;
-                int part = (int) Math.ceil(distance / segment);
-                if (part < 1) part = 1;
-                if (part > 5) part = 5;
 
+            double distanceSquared = source.getCenter().distanceSquared(loc);
+            double radiusSquared = Math.pow(source.getRadius(), 2);
+            if (distanceSquared <= radiusSquared) {
                 Map<String, Double> data = manager.getLevelData(source.getIntensity());
                 if (data != null) {
                     double baseAcc = data.get("base_accumulation");
-                    double localAccum = baseAcc * source.getPower() * Math.pow(1.5, part - 1);
-                    totalRadiation += localAccum;
+                    totalRadiation += baseAcc * calculateDistanceFactor(distanceSquared, radiusSquared);
                 }
             }
         }
 
-        // 2) Вклад от регионов с флагом `radiation`
         int radiationLevel = getRadiationLevel(player);
         if (radiationLevel > 0) {
             Map<String, Double> data = manager.getLevelData(radiationLevel);
@@ -134,17 +105,31 @@ public class RadiationTask extends BukkitRunnable {
             }
         }
 
-        // 3) Учёт защиты от брони
-        for (int level = 5; level >= 1; level--) {
-            double armorProtection = calculateArmorProtection(player, level);
-            if (armorProtection > 0) {
-                totalRadiation *= (1.0 - armorProtection);
-            }
-        }
-
+        totalRadiation *= (1.0 - calculateArmorProtection(player));
         return totalRadiation;
     }
+
+    private double calculateDistanceFactor(double distanceSquared, double radiusSquared) {
+        double normalizedDistance = Math.sqrt(distanceSquared) / Math.sqrt(radiusSquared);
+        return Math.max(0, 1 - normalizedDistance);
+    }
+
     public int getRadiationLevel(Player player) {
+        UUID playerId = player.getUniqueId();
+        long currentTime = System.currentTimeMillis();
+
+        if (regionCache.containsKey(playerId) && (currentTime - regionCacheTimestamps.get(playerId)) < REGION_CACHE_LIFETIME) {
+            return regionCache.get(playerId);
+        }
+
+        int radiationLevel = calculateRadiationLevel(player);
+        regionCache.put(playerId, radiationLevel);
+        regionCacheTimestamps.put(playerId, currentTime);
+
+        return radiationLevel;
+    }
+
+    private int calculateRadiationLevel(Player player) {
         Location loc = player.getLocation();
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(loc.getWorld()));
@@ -154,53 +139,33 @@ public class RadiationTask extends BukkitRunnable {
             for (ProtectedRegion region : regions) {
                 Integer radiationLevel = region.getFlag(Grad.RADIATION_FLAG);
                 if (radiationLevel != null) {
-                    return radiationLevel; // Возвращаем первый найденный уровень радиации
+                    return radiationLevel;
                 }
             }
         }
-        return 0; // Если регионов с флагом radiation нет, возвращаем 0
+        return 0;
     }
-    /**
-     * Проверяет, насколько броня игрока защищает от заданного уровня радиации (1..5).
-     *
-     * @param player Игрок, чья броня проверяется.
-     * @param level  Уровень радиации (1..5), от которого проверяется защита.
-     * @return Доля защиты (от 0.0 до 1.0), где 1.0 — полная защита.
-     */
-    private double calculateArmorProtection(Player player, int level) {
-        // Формируем искомый тег
-        String desiredTag = "protect_radiation_" + level;
 
-        // Получаем сет брони игрока
-        ItemStack[] armor = player.getEquipment().getArmorContents();
-
-        if (armor == null || armor.length == 0) {
-            return 0.0; // Нет брони
-        }
-
-
-
+    private double calculateArmorProtection(Player player) {
+        String keyBase = "protect_radiation_";
         double protection = 0.0;
 
-        // Проверяем каждую часть брони
-        for (ItemStack piece : armor) {
-
+        for (ItemStack piece : player.getEquipment().getArmorContents()) {
             if (piece == null) continue;
 
             ItemMeta meta = piece.getItemMeta();
-            if (meta == null || meta.getPersistentDataContainer() == null) continue;
+            if (meta == null) continue;
 
-            // Ищем NBT-тег
             NamespacedKey key = new NamespacedKey(Grad.getInstance(), "radiation_level");
             String storedValue = meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
 
-            // Если тег совпадает, добавляем 1/4 защиты
-            if (storedValue != null && storedValue.equalsIgnoreCase(desiredTag)) {
-                protection += 0.25;
+            for (int level = 1; level <= 5; level++) {
+                if (storedValue != null && storedValue.equalsIgnoreCase(keyBase + level)) {
+                    protection += 0.25;
+                }
             }
         }
 
-        // Возвращаем суммарную защиту
-        return Math.min(protection, 1.0); // Максимум 100% защиты
+        return Math.min(protection, 1.0);
     }
 }
