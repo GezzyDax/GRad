@@ -12,7 +12,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.entity.Player;
 import org.gezzon.grad.radiation.RadiationManager;
 import org.gezzon.grad.radiation.RadiationSource;
-
 public class PlayerListener implements Listener {
 
     private final RadiationManager radiationManager;
@@ -30,7 +29,6 @@ public class PlayerListener implements Listener {
             radiationManager.setPlayerRadiation(player.getUniqueId(), 0.0);
         }
     }
-
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
@@ -54,6 +52,7 @@ public class PlayerListener implements Listener {
         }
     }
     }
+
     private void sendPlayerMessage(Player player, String message) {
         player.sendMessage("§a" + message);
     }
@@ -77,8 +76,6 @@ public class PlayerListener implements Listener {
             }
         }
     }
-
-
 
     /**
      * Сброс радиации при смерти игрока.
