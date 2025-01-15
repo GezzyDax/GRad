@@ -104,7 +104,7 @@ public class RadiationTask extends BukkitRunnable {
         Location loc = player.getLocation();
         double totalRadiation = 0.0;
 
-        // 1) Считаем вклад от сферических источников радиации
+        // 1) Вклад от всех сферических источников
         for (RadiationSource source : manager.getAllSources()) {
             if (!source.getCenter().getWorld().equals(loc.getWorld())) {
                 continue;
@@ -125,42 +125,41 @@ public class RadiationTask extends BukkitRunnable {
             }
         }
 
-        // 2) Считаем вклад от WorldGuard-флагов
-        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-        RegionManager regionManager = container.get(BukkitAdapter.adapt(loc.getWorld()));
-        int wgMaxLevel = 0;
-
-        if (regionManager != null) {
-            ApplicableRegionSet regions = regionManager.getApplicableRegions(BukkitAdapter.asBlockVector(loc));
-            for (ProtectedRegion region : regions) {
-                for (int i = 1; i <= 5; i++) {
-                    if (region.getFlag(new StateFlag("radiation_" + i, false)) == StateFlag.State.ALLOW) {
-                        wgMaxLevel = Math.max(wgMaxLevel, i);
-                    }
-                }
-            }
-        }
-
-        if (wgMaxLevel > 0) {
-            Map<String, Double> data = manager.getLevelData(wgMaxLevel);
+        // 2) Вклад от регионов с флагом `radiation`
+        int radiationLevel = getRadiationLevel(player);
+        if (radiationLevel > 0) {
+            Map<String, Double> data = manager.getLevelData(radiationLevel);
             if (data != null) {
-                double baseAcc = data.get("base_accumulation");
-                totalRadiation += baseAcc;
+                totalRadiation += data.get("base_accumulation");
             }
         }
 
-        // 3) Учитываем защиту от брони
+        // 3) Учёт защиты от брони
         for (int level = 5; level >= 1; level--) {
             double armorProtection = calculateArmorProtection(player, level);
             if (armorProtection > 0) {
-                // Уменьшаем радиацию на процент защиты
                 totalRadiation *= (1.0 - armorProtection);
             }
         }
 
         return totalRadiation;
     }
+    public int getRadiationLevel(Player player) {
+        Location loc = player.getLocation();
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager regionManager = container.get(BukkitAdapter.adapt(loc.getWorld()));
 
+        if (regionManager != null) {
+            ApplicableRegionSet regions = regionManager.getApplicableRegions(BukkitAdapter.asBlockVector(loc));
+            for (ProtectedRegion region : regions) {
+                Integer radiationLevel = region.getFlag(Grad.RADIATION_FLAG);
+                if (radiationLevel != null) {
+                    return radiationLevel; // Возвращаем первый найденный уровень радиации
+                }
+            }
+        }
+        return 0; // Если регионов с флагом radiation нет, возвращаем 0
+    }
     /**
      * Проверяет, насколько броня игрока защищает от заданного уровня радиации (1..5).
      *
@@ -174,12 +173,18 @@ public class RadiationTask extends BukkitRunnable {
 
         // Получаем сет брони игрока
         ItemStack[] armor = player.getEquipment().getArmorContents();
-        if (armor == null) return 0.0;
+
+        if (armor == null || armor.length == 0) {
+            return 0.0; // Нет брони
+        }
+
+
 
         double protection = 0.0;
 
         // Проверяем каждую часть брони
         for (ItemStack piece : armor) {
+
             if (piece == null) continue;
 
             ItemMeta meta = piece.getItemMeta();

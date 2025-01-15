@@ -208,6 +208,9 @@ public class RadiationManager {
         return sources.get(id);
     }
 
+
+
+
     /**
      * Получить все существующие источники радиации
      */

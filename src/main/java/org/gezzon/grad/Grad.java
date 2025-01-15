@@ -1,17 +1,14 @@
 package org.gezzon.grad;
 
 import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.flags.IntegerFlag;
 import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.gezzon.grad.radiation.RadiationManager;
 import org.gezzon.grad.radiation.RadiationTask;
 import org.gezzon.grad.commands.RadiationCommand;
 import org.gezzon.grad.listener.PlayerListener;
-import com.sk89q.worldguard.protection.flags.Flag;
-import com.sk89q.worldguard.protection.flags.Flags;
-import com.sk89q.worldguard.protection.flags.StateFlag;
 
-import java.lang.reflect.Field;
 
 
 /**
@@ -24,11 +21,7 @@ import java.lang.reflect.Field;
 
 public class Grad extends JavaPlugin {
 
-        public static final StateFlag RADIATION_1 = new StateFlag("radiation_1", false);
-        public static final StateFlag RADIATION_2 = new StateFlag("radiation_2", false);
-        public static final StateFlag RADIATION_3 = new StateFlag("radiation_3", false);
-        public static final StateFlag RADIATION_4 = new StateFlag("radiation_4", false);
-        public static final StateFlag RADIATION_5 = new StateFlag("radiation_5", false);
+    public static final IntegerFlag RADIATION_FLAG = new IntegerFlag("radiation");
     private RadiationManager radiationManager;
     private RadiationTask radiationTask;
 
@@ -62,14 +55,12 @@ public class Grad extends JavaPlugin {
     private void registerFlags() {
         FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
         try {
-            if (registry.get("radiation_1") == null) registry.register(RADIATION_1);
-            if (registry.get("radiation_2") == null) registry.register(RADIATION_2);
-            if (registry.get("radiation_3") == null) registry.register(RADIATION_3);
-            if (registry.get("radiation_4") == null) registry.register(RADIATION_4);
-            if (registry.get("radiation_5") == null) registry.register(RADIATION_5);
-            getLogger().info("Custom WorldGuard flags registered successfully.");
+            if (registry.get("radiation") == null) {
+                registry.register(RADIATION_FLAG);
+                getLogger().info("Custom WorldGuard flag 'radiation' registered successfully.");
+            }
         } catch (Exception e) {
-            getLogger().warning("Failed to register custom WorldGuard flags!");
+            getLogger().warning("Failed to register custom flag 'radiation': " + e.getMessage());
             e.printStackTrace();
         }
     }

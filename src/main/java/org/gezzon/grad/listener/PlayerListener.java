@@ -74,6 +74,7 @@ public class PlayerListener implements Listener {
         }
     }
 
+
     /**
      * Сброс радиации при смерти игрока.
      */
