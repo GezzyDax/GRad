@@ -5,11 +5,16 @@ import com.sk89q.worldguard.protection.flags.Flag;
 import com.sk89q.worldguard.protection.flags.IntegerFlag;
 import com.sk89q.worldguard.protection.flags.registry.FlagConflictException;
 import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
+import org.bukkit.NamespacedKey;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.gezzon.grad.enchantment.RadiationProtectionEnchantment;
 import org.gezzon.grad.radiation.RadiationManager;
 import org.gezzon.grad.radiation.RadiationTask;
 import org.gezzon.grad.commands.RadiationCommand;
 import org.gezzon.grad.listener.PlayerListener;
+
+import java.lang.reflect.Field;
 
 
 
@@ -22,7 +27,7 @@ import org.gezzon.grad.listener.PlayerListener;
  */
 
 public class Grad extends JavaPlugin {
-
+    private static Enchantment radiationProtection;
     private RadiationManager radiationManager;
     private RadiationTask radiationTask;
     public static IntegerFlag RADIATION_FLAG;
@@ -32,6 +37,11 @@ public class Grad extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        // Регистрируем новое зачарование
+        if (Enchantment.getByKey(new NamespacedKey(this, "radiation_protection")) == null) {
+            radiationProtection = new RadiationProtectionEnchantment("radiation_protection");
+            registerEnchantment(radiationProtection);
+        }
         // Создаём/сохраняем config.yml по умолчанию, если его нет
         saveDefaultConfig();
         instance = this;
@@ -52,6 +62,20 @@ public class Grad extends JavaPlugin {
         getLogger().info("Grad плагин включён!");
     }
 
+    private void registerEnchantment(Enchantment enchantment) {
+        try {
+            Field field = Enchantment.class.getDeclaredField("acceptingNew");
+            field.setAccessible(true);
+            field.set(null, true);
+            Enchantment.registerEnchantment(enchantment);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static Enchantment getRadiationProtectionEnchantment() {
+        return radiationProtection;
+    }
     private void registerFlags() {
         FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
         try {

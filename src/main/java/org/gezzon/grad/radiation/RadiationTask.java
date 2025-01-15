@@ -117,7 +117,7 @@ public class RadiationTask extends BukkitRunnable {
         }
 
         // Учитываем защиту от брони
-        totalRadiation *= (1.0 - calculateArmorProtection(player));
+        totalRadiation *= (1.0 - calculateArmorProtection(player, getRadiationLevel(player)));
         return totalRadiation;
     }
 
@@ -171,22 +171,20 @@ public class RadiationTask extends BukkitRunnable {
     /**
      * Рассчитывает защиту игрока от радиации на основе брони.
      */
-    private double calculateArmorProtection(Player player) {
-        String keyBase = "protect_radiation_";
+    private double calculateArmorProtection(Player player, int radiationLevel) {
         double protection = 0.0;
 
         for (ItemStack piece : player.getEquipment().getArmorContents()) {
             if (piece == null) continue;
 
-            ItemMeta meta = piece.getItemMeta();
-            if (meta == null) continue;
+            // Проверяем наличие зачарования Radiation Protection
+            if (piece.containsEnchantment(Grad.getRadiationProtectionEnchantment())) {
+                int level = piece.getEnchantmentLevel(Grad.getRadiationProtectionEnchantment());
+                protection += level * 0.25; // Каждое зачарование добавляет 25% защиты за уровень
 
-            NamespacedKey key = new NamespacedKey(Grad.getInstance(), "radiation_level");
-            String storedValue = meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
-
-            for (int level = 1; level <= 5; level++) {
-                if (storedValue != null && storedValue.equalsIgnoreCase(keyBase + level)) {
-                    protection += 0.25; // Увеличиваем защиту на 25% за каждый уровень
+                // Если уровень зачарования выше или равен текущему уровню радиации, игрок игнорирует эффект
+                if (level >= radiationLevel) {
+                    return 1.0; // Полная защита от радиации данного уровня
                 }
             }
         }
