@@ -115,18 +115,7 @@ public class RadiationTask extends BukkitRunnable {
     }
 
     public int getRadiationLevel(Player player) {
-        UUID playerId = player.getUniqueId();
-        long currentTime = System.currentTimeMillis();
-
-        if (regionCache.containsKey(playerId) && (currentTime - regionCacheTimestamps.get(playerId)) < REGION_CACHE_LIFETIME) {
-            return regionCache.get(playerId);
-        }
-
-        int radiationLevel = calculateRadiationLevel(player);
-        regionCache.put(playerId, radiationLevel);
-        regionCacheTimestamps.put(playerId, currentTime);
-
-        return radiationLevel;
+        return calculateRadiationLevel(player); // Прямая проверка
     }
 
     private int calculateRadiationLevel(Player player) {
