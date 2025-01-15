@@ -16,7 +16,7 @@ import java.util.EnumSet;
 public class RadiationProtectionEnchantment extends Enchantment {
 
     public RadiationProtectionEnchantment(String key) {
-        super(new NamespacedKey("GRad", key)); // Укажите ключ зачарования
+        super(new NamespacedKey("grad", key)); // Укажите ключ зачарования
     }
 
     @Override

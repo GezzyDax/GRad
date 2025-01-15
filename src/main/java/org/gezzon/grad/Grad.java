@@ -46,8 +46,8 @@ public class Grad extends JavaPlugin {
         saveDefaultConfig();
         instance = this;
         // Создаём менеджер радиации, читаем конфигурацию, загружаем источники
-        radiationManager = new RadiationManager(this);
-        radiationManager.init();
+        this.radiationManager = new RadiationManager(this);
+        this.radiationManager.init();
 
         // Запускаем периодическую задачу (каждую секунду)
         radiationTask = new RadiationTask(radiationManager);
@@ -109,7 +109,14 @@ public class Grad extends JavaPlugin {
     @Override
     public void onDisable() {
         // При выключении сервера/плагина сохраняем все источники радиации
-        radiationManager.saveSourcesToFile();
+        if (this.radiationManager != null) {
+            try {
+                this.radiationManager.saveSourcesToFile(); // Сохранение данных
+            } catch (Exception e) {
+                getLogger().severe("Error while saving radiation sources: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
         getLogger().info("Grad плагин выключён!");
     }
 
