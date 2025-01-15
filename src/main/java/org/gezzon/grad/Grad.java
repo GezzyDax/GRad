@@ -5,6 +5,12 @@ import org.gezzon.grad.radiation.RadiationManager;
 import org.gezzon.grad.radiation.RadiationTask;
 import org.gezzon.grad.commands.RadiationCommand;
 import org.gezzon.grad.listener.PlayerListener;
+import com.sk89q.worldguard.protection.flags.Flag;
+import com.sk89q.worldguard.protection.flags.Flags;
+import com.sk89q.worldguard.protection.flags.StateFlag;
+
+import java.lang.reflect.Field;
+
 
 /**
  * Главный класс плагина Grad.
@@ -13,8 +19,16 @@ import org.gezzon.grad.listener.PlayerListener;
  *  - Регистрируются команды и слушатели;
  *  - Запускается периодическая задача RadiationTask.
  */
+
 public class Grad extends JavaPlugin {
 
+    public class CustomFlags {
+        public static final StateFlag RADIATION_1 = new StateFlag("radiation_1", false);
+        public static final StateFlag RADIATION_2 = new StateFlag("radiation_2", false);
+        public static final StateFlag RADIATION_3 = new StateFlag("radiation_3", false);
+        public static final StateFlag RADIATION_4 = new StateFlag("radiation_4", false);
+        public static final StateFlag RADIATION_5 = new StateFlag("radiation_5", false);
+    }
     private RadiationManager radiationManager;
     private RadiationTask radiationTask;
 
@@ -41,8 +55,30 @@ public class Grad extends JavaPlugin {
         // Регистрируем единую команду /radiation
         getCommand("radiation").setExecutor(new RadiationCommand(this, radiationManager));
         getCommand("radiation").setTabCompleter(new RadiationCommand(this, radiationManager));
-
+        registerFlags();
         getLogger().info("Grad плагин включён!");
+    }
+
+    private void registerFlags() {
+        try {
+            Field flagField = Flags.class.getDeclaredField("REGISTRY");
+            flagField.setAccessible(true);
+            Flag<?>[] flags = {
+                    CustomFlags.RADIATION_1,
+                    CustomFlags.RADIATION_2,
+                    CustomFlags.RADIATION_3,
+                    CustomFlags.RADIATION_4,
+                    CustomFlags.RADIATION_5
+            };
+            for (Flag<?> flag : flags) {
+                com.sk89q.worldguard.protection.flags.registry.FlagRegistry registry =
+                        (com.sk89q.worldguard.protection.flags.registry.FlagRegistry) flagField.get(null);
+                registry.register(flag);
+            }
+        } catch (Exception e) {
+            getLogger().warning("Не удалось зарегистрировать флаги WorldGuard!");
+            e.printStackTrace();
+        }
     }
 
     @Override

@@ -15,6 +15,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.gezzon.grad.Grad;
+import org.gezzon.grad.Grad.CustomFlags;
+import com.sk89q.worldguard.protection.flags.StateFlag;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -135,33 +137,30 @@ public class RadiationTask extends BukkitRunnable {
      */
     private double calculateRadiationForPlayer(Player player) {
         Location loc = player.getLocation();
-        double total = 0.0;
+        double totalRadiation = 0.0;
 
-        // 1) Все сферические источники:
+        // 1) Считаем вклад от сферических источников радиации
         for (RadiationSource source : manager.getAllSources()) {
             if (!source.getCenter().getWorld().equals(loc.getWorld())) {
                 continue;
             }
             double distance = source.getCenter().distance(loc);
             if (distance <= source.getRadius()) {
-                // Определяем "часть" зоны, делим радиус на 5 равных сегментов
                 double segment = source.getRadius() / 5.0;
                 int part = (int) Math.ceil(distance / segment);
                 if (part < 1) part = 1;
                 if (part > 5) part = 5;
 
-                // Читаем base_accumulation для уровня source.getIntensity()
                 Map<String, Double> data = manager.getLevelData(source.getIntensity());
                 if (data != null) {
                     double baseAcc = data.get("base_accumulation");
-                    // Формула: baseAcc * power * (1.5^(part - 1))
-                    double localAccum = baseAcc * source.getPower() * (Math.pow(1.5, part - 1));
-                    total += localAccum;
+                    double localAccum = baseAcc * source.getPower() * Math.pow(1.5, part - 1);
+                    totalRadiation += localAccum;
                 }
             }
         }
 
-        // 2) WorldGuard-флаги radiation_1..radiation_5
+        // 2) Считаем вклад от WorldGuard-флагов
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
         RegionManager regionManager = container.get(BukkitAdapter.adapt(loc.getWorld()));
         int wgMaxLevel = 0;
@@ -169,27 +168,69 @@ public class RadiationTask extends BukkitRunnable {
         if (regionManager != null) {
             ApplicableRegionSet regions = regionManager.getApplicableRegions(BukkitAdapter.asBlockVector(loc));
             for (ProtectedRegion region : regions) {
-                String regionId = region.getId().toLowerCase();
-                // "Костыльный" способ: если в имени региона есть radiation_1..5
                 for (int i = 1; i <= 5; i++) {
-                    if (regionId.contains("radiation_" + i)) {
+                    if (region.getFlag(new StateFlag("radiation_" + i, false)) == StateFlag.State.ALLOW) {
                         wgMaxLevel = Math.max(wgMaxLevel, i);
                     }
                 }
             }
         }
 
-        // Если есть WG-зона с флагом radiation_X
         if (wgMaxLevel > 0) {
             Map<String, Double> data = manager.getLevelData(wgMaxLevel);
             if (data != null) {
                 double baseAcc = data.get("base_accumulation");
-                // Накопление без деления на части (т.е. зона целиком)
-                total += baseAcc;
+                totalRadiation += baseAcc;
             }
         }
 
-        return total;
+        // 3) Учитываем защиту от брони
+        for (int level = 5; level >= 1; level--) {
+            double armorProtection = calculateArmorProtection(player, level);
+            if (armorProtection > 0) {
+                // Уменьшаем радиацию на процент защиты
+                totalRadiation *= (1.0 - armorProtection);
+            }
+        }
+
+        return totalRadiation;
     }
 
+    /**
+     * Проверяет, насколько броня игрока защищает от заданного уровня радиации (1..5).
+     *
+     * @param player Игрок, чья броня проверяется.
+     * @param level  Уровень радиации (1..5), от которого проверяется защита.
+     * @return Доля защиты (от 0.0 до 1.0), где 1.0 — полная защита.
+     */
+    private double calculateArmorProtection(Player player, int level) {
+        // Формируем искомый тег
+        String desiredTag = "radiation_" + level;
+
+        // Получаем сет брони игрока
+        ItemStack[] armor = player.getEquipment().getArmorContents();
+        if (armor == null) return 0.0;
+
+        double protection = 0.0;
+
+        // Проверяем каждую часть брони
+        for (ItemStack piece : armor) {
+            if (piece == null) continue;
+
+            ItemMeta meta = piece.getItemMeta();
+            if (meta == null || meta.getPersistentDataContainer() == null) continue;
+
+            // Ищем NBT-тег
+            NamespacedKey key = new NamespacedKey(Grad.getInstance(), "radiation_level");
+            String storedValue = meta.getPersistentDataContainer().get(key, PersistentDataType.STRING);
+
+            // Если тег совпадает, добавляем 1/4 защиты
+            if (storedValue != null && storedValue.equalsIgnoreCase(desiredTag)) {
+                protection += 0.25;
+            }
+        }
+
+        // Возвращаем суммарную защиту
+        return Math.min(protection, 1.0); // Максимум 100% защиты
+    }
 }

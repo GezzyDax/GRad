@@ -2,6 +2,7 @@ package org.gezzon.grad.radiation;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -20,6 +21,11 @@ import java.util.stream.Collectors;
  *  - хранение накопленных значений радиации игроков.
  */
 public class RadiationManager {
+
+    private Material radioactiveBlockType; // Тип блока
+    private double blockRadius;            // Радиус радиации вокруг блока
+    private int blockLevel;                // Уровень радиации от блока
+    private double blockPower;             // Множитель радиации от блока
 
     private final Grad plugin;
 
@@ -53,6 +59,30 @@ public class RadiationManager {
     public void init() {
         loadLevelData();
         loadSourcesFromFile();
+        loadRadioactiveBlockConfig();
+    }
+
+
+
+    public void loadRadioactiveBlockConfig() {
+        FileConfiguration config = plugin.getConfig();
+        String blockTypeStr = config.getString("blocks.radioactive_block.type");
+        if (blockTypeStr == null) {
+            plugin.getLogger().warning("Тип радиационного блока не задан в config.yml!");
+            return;
+        }
+
+        try {
+            Material blockType = Material.valueOf(blockTypeStr.toUpperCase());
+            radioactiveBlockType = blockType; // Сохраняем тип блока в поле менеджера
+
+            blockRadius = config.getDouble("blocks.radioactive_block.radius", 10);
+            blockLevel = config.getInt("blocks.radioactive_block.level", 3);
+            blockPower = config.getDouble("blocks.radioactive_block.power", 1.0);
+
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Неверный тип блока в config.yml: " + blockTypeStr);
+        }
     }
 
     /**
@@ -228,6 +258,21 @@ public class RadiationManager {
         }
     }
 
+    public Material getRadioactiveBlockType() {
+        return radioactiveBlockType;
+    }
+
+    public double getBlockRadius() {
+        return blockRadius;
+    }
+
+    public int getBlockLevel() {
+        return blockLevel;
+    }
+
+    public double getBlockPower() {
+        return blockPower;
+    }
     /**
      * Узнать, включён ли "бог-режим" у игрока
      */
