@@ -136,13 +136,16 @@ public class RadiationTask extends BukkitRunnable {
 
         if (regionManager != null) {
             ApplicableRegionSet regions = regionManager.getApplicableRegions(BukkitAdapter.asBlockVector(loc));
+            Bukkit.getLogger().info("Регионов найдено: " + regions.size());
             for (ProtectedRegion region : regions) {
                 Integer radiationLevel = region.getFlag(Grad.RADIATION_FLAG);
+                Bukkit.getLogger().info("Флаг региона: " + region.getId() + " | Уровень радиации: " + radiationLevel);
                 if (radiationLevel != null) {
                     return radiationLevel;
                 }
             }
         }
+
         return 0;
     }
 
