@@ -33,6 +33,9 @@ public class RadiationManager {
     private final Map<Integer, RadiationSource> sources = new HashMap<>();
     private int nextId = 1; // Автоинкремент для нового источника
 
+    // Map для быстрого доступа по Location
+    private final Map<Location, RadiationSource> locationSourceMap = new HashMap<>();
+
     // Данные по уровням радиации (1..5):
     // уровень -> Map{ "base_accumulation", "damage_start", "damage_interval", "damage_amount" }
     private final Map<Integer, Map<String, Double>> levelData = new HashMap<>();
@@ -184,17 +187,22 @@ public class RadiationManager {
     public RadiationSource addSource(int intensity, double radius, double power, Location center) {
         RadiationSource source = new RadiationSource(nextId, intensity, radius, power, center);
         sources.put(nextId, source);
+        locationSourceMap.put(center, source); // Кэшируем по Location
         nextId++;
         saveSourcesToFile();
         return source;
     }
 
+    public RadiationSource getSourceByLocation(Location location) {
+        return locationSourceMap.get(location);
+    }
     /**
      * Удалить источник радиации по ID
      */
     public boolean removeSource(int id) {
-        if (sources.containsKey(id)) {
-            sources.remove(id);
+        RadiationSource source = sources.remove(id);
+        if (source != null) {
+            locationSourceMap.remove(source.getCenter()); // Удаляем из кэша
             saveSourcesToFile();
             return true;
         }

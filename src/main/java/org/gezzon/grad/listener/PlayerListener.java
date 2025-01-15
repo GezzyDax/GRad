@@ -1,6 +1,7 @@
 package org.gezzon.grad.listener;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -8,7 +9,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.entity.Player;
 import org.gezzon.grad.radiation.RadiationManager;
 import org.gezzon.grad.radiation.RadiationSource;
@@ -16,63 +16,68 @@ import org.gezzon.grad.radiation.RadiationSource;
 public class PlayerListener implements Listener {
 
     private final RadiationManager radiationManager;
+    private final Material radioactiveBlockType;
 
     public PlayerListener(RadiationManager radiationManager) {
         this.radiationManager = radiationManager;
+        this.radioactiveBlockType = radiationManager.getRadioactiveBlockType();
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        // Сбрасываем радиацию при входе
-        radiationManager.setPlayerRadiation(event.getPlayer().getUniqueId(), 0.0);
+        Player player = event.getPlayer();
+        if (radiationManager.getPlayerRadiation(player.getUniqueId()) > 0) {
+            radiationManager.setPlayerRadiation(player.getUniqueId(), 0.0);
+        }
     }
+
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
+        if (event.getBlock().getType() == radioactiveBlockType){
         Block block = event.getBlock();
         Player player = event.getPlayer();
 
-        // Проверяем, является ли установленный блок радиационным
         if (block.getType() == radiationManager.getRadioactiveBlockType()) {
             Location loc = block.getLocation();
-            // Добавляем радиационный источник вокруг блока
-            RadiationSource source = radiationManager.addSource(
-                    radiationManager.getBlockLevel(),
-                    radiationManager.getBlockRadius(),
-                    radiationManager.getBlockPower(),
-                    loc
-            );
-            player.sendMessage("§aРадиоактивный блок установлен. ID источника: " + source.getId());
+            if (radiationManager.getSourceByLocation(loc) == null) { // Проверяем, есть ли уже источник
+                RadiationSource source = radiationManager.addSource(
+                        radiationManager.getBlockLevel(),
+                        radiationManager.getBlockRadius(),
+                        radiationManager.getBlockPower(),
+                        loc
+                );
+                sendPlayerMessage(event.getPlayer(), "Радиоактивный блок установлен. ID источника: " + source.getId());
+            } else {
+                sendPlayerMessage(event.getPlayer(), "Источник радиации уже существует на этом месте.");
+            }
         }
+    }
+    }
+    private void sendPlayerMessage(Player player, String message) {
+        player.sendMessage("§a" + message);
     }
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
-        Block block = event.getBlock();
-        Player player = event.getPlayer();
+        if (event.getBlock().getType() == radioactiveBlockType) {
+            Block block = event.getBlock();
+            Player player = event.getPlayer();
 
-        // Проверяем, является ли разрушенный блок радиационным
-        if (block.getType() == radiationManager.getRadioactiveBlockType()) {
-            // Находим радиационный источник, связанный с этим блоком
-            Location loc = block.getLocation();
-            RadiationSource toRemove = null;
+            if (block.getType() == radiationManager.getRadioactiveBlockType()) {
+                Location loc = block.getLocation();
+                RadiationSource source = radiationManager.getSourceByLocation(loc);
 
-            for (RadiationSource source : radiationManager.getAllSources()) {
-                if (source.getCenter().equals(loc)) {
-                    toRemove = source;
-                    break;
-                }
-            }
-
-            if (toRemove != null) {
-                // Удаляем источник радиации
-                boolean removed = radiationManager.removeSource(toRemove.getId());
-                if (removed) {
-                    player.sendMessage("§aРадиоактивный блок удалён. Источник радиации удалён.");
+                if (source != null) {
+                    boolean removed = radiationManager.removeSource(source.getId());
+                    if (removed) {
+                        sendPlayerMessage(event.getPlayer(), "Радиоактивный блок удалён. Источник радиации удалён.");
+                    }
                 }
             }
         }
     }
+
 
 
     /**
