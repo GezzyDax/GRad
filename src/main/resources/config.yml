@@ -27,7 +27,7 @@ radiation:
       damage_amount: 5
 blocks:
   radioactive_block:
-    type: minecraft:diamond_block
+    type: end_portal_frame
     radius: 10
     level: 3
     power: 1.5
