@@ -49,7 +49,6 @@ public class Grad extends JavaPlugin {
         // Регистрируем единую команду /radiation
         getCommand("radiation").setExecutor(new RadiationCommand(this, radiationManager));
         getCommand("radiation").setTabCompleter(new RadiationCommand(this, radiationManager));
-        registerFlags();
         getLogger().info("Grad плагин включён!");
     }
 
@@ -59,8 +58,7 @@ public class Grad extends JavaPlugin {
             // Создаём флаг с именем "radiation" (IntegerFlag)
             IntegerFlag flag = new IntegerFlag("radiation");
             registry.register(flag);
-            // Устанавливаем наш статический флаг, если ошибок не возникло
-            RADIATION_FLAG = flag;
+            RADIATION_FLAG = flag; // Устанавливаем наш статический флаг
             getLogger().info("Custom WorldGuard flag 'radiation' registered successfully.");
         } catch (FlagConflictException e) {
             // Если другой плагин уже зарегистрировал флаг с таким именем
@@ -77,7 +75,11 @@ public class Grad extends JavaPlugin {
             e.printStackTrace();
         }
     }
-
+    @Override
+    public void onLoad() {
+        // Регистрируем кастомный флаг на этапе загрузки
+        registerFlags();
+    }
 
 
     @Override
@@ -86,6 +88,7 @@ public class Grad extends JavaPlugin {
         radiationManager.saveSourcesToFile();
         getLogger().info("Grad плагин выключён!");
     }
+
 
     /**
      * Геттер менеджера радиации (например, если понадобится в других частях плагина).
