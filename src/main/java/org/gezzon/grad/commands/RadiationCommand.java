@@ -1,9 +1,6 @@
 package org.gezzon.grad.commands;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Particle;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -12,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.gezzon.grad.Grad;
 import org.gezzon.grad.radiation.RadiationManager;
 import org.gezzon.grad.radiation.RadiationSource;
+import org.bukkit.Particle;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -310,7 +308,8 @@ public class RadiationCommand implements CommandExecutor, TabCompleter {
         World world = center.getWorld();
         if (world == null) return;
 
-        // Упрощённый способ: рисуем несколько окружностей по высоте
+        Particle.DustOptions dustOptions = new Particle.DustOptions(Color.RED, 1.0f);
+
         for (double y = -r; y <= r; y += (r / 4)) {
             double circleRadius = Math.sqrt(r * r - y * y);
             for (int angleDeg = 0; angleDeg < 360; angleDeg += 15) {
@@ -318,7 +317,9 @@ public class RadiationCommand implements CommandExecutor, TabCompleter {
                 double x = center.getX() + circleRadius * Math.cos(radAngle);
                 double z = center.getZ() + circleRadius * Math.sin(radAngle);
                 Location particleLoc = new Location(world, x, center.getY() + y, z);
-                player.spawnParticle(Particle.VILLAGER_HAPPY, particleLoc, 1, 0, 0, 0, 0);
+
+                // Спавним REDSTONE с настройками DustOptions
+                player.spawnParticle(Particle.HAPPY_VILLAGER, particleLoc, 1, dustOptions);
             }
         }
     }
