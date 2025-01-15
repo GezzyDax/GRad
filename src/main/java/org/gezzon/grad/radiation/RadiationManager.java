@@ -59,14 +59,13 @@ public class RadiationManager {
      * Загрузка данных об уровнях радиации (1..5) из config.yml
      */
     private void loadLevelData() {
-        // Читаем список уровней из секции radiation.levels
         List<Map<?, ?>> levels = plugin.getConfig().getMapList("radiation.levels");
         for (Map<?, ?> levelMap : levels) {
-            int level = (int) levelMap.get("level");
-            double baseAcc = (double) levelMap.get("base_accumulation");
-            double damageStart = Double.valueOf(levelMap.get("damage_start").toString());
-            double damageInterval = Double.valueOf(levelMap.get("damage_interval").toString());
-            double damageAmount = Double.valueOf(levelMap.get("damage_amount").toString());
+            int level = ((Number) levelMap.get("level")).intValue();
+            double baseAcc = ((Number) levelMap.get("base_accumulation")).doubleValue();
+            double damageStart = ((Number) levelMap.get("damage_start")).doubleValue();
+            double damageInterval = ((Number) levelMap.get("damage_interval")).doubleValue();
+            double damageAmount = ((Number) levelMap.get("damage_amount")).doubleValue();
 
             Map<String, Double> data = new HashMap<>();
             data.put("base_accumulation", baseAcc);
@@ -84,35 +83,36 @@ public class RadiationManager {
     private void loadSourcesFromFile() {
         sourcesFile = new File(plugin.getDataFolder(), "radiation-sources.yml");
         if (!sourcesFile.exists()) {
-            // Если файла нет, пытаемся создать пустой
             try {
+                // Создаём файл, если его нет
                 sourcesFile.createNewFile();
             } catch (IOException e) {
                 plugin.getLogger().warning("Не удалось создать файл radiation-sources.yml!");
+                return;
             }
         }
         sourcesConfig = YamlConfiguration.loadConfiguration(sourcesFile);
+        if (sourcesConfig == null) {
+            sourcesConfig = new YamlConfiguration();
+        }
 
-        // Читаем секцию 'sources'
         if (sourcesConfig.contains("sources")) {
             List<Map<?, ?>> list = sourcesConfig.getMapList("sources");
             for (Map<?, ?> entry : list) {
-                int id = (int) entry.get("id");
-                int intensity = (int) entry.get("intensity");
-                double radius = Double.valueOf(entry.get("radius").toString());
-                double power = Double.valueOf(entry.get("power").toString());
+                int id = ((Number) entry.get("id")).intValue();
+                int intensity = ((Number) entry.get("intensity")).intValue();
+                double radius = ((Number) entry.get("radius")).doubleValue();
+                double power = ((Number) entry.get("power")).doubleValue();
                 String worldName = (String) entry.get("world");
-                double x = Double.valueOf(entry.get("x").toString());
-                double y = Double.valueOf(entry.get("y").toString());
-                double z = Double.valueOf(entry.get("z").toString());
+                double x = ((Number) entry.get("x")).doubleValue();
+                double y = ((Number) entry.get("y")).doubleValue();
+                double z = ((Number) entry.get("z")).doubleValue();
 
                 World world = Bukkit.getWorld(worldName);
                 if (world != null) {
                     Location center = new Location(world, x, y, z);
                     RadiationSource source = new RadiationSource(id, intensity, radius, power, center);
                     sources.put(id, source);
-
-                    // Обновляем счётчик nextId, чтобы он не перезаписывал существующие источники
                     nextId = Math.max(nextId, id + 1);
                 }
             }
@@ -123,6 +123,10 @@ public class RadiationManager {
      * Сохранение текущих источников радиации в файл radiation-sources.yml
      */
     public void saveSourcesToFile() {
+        if (sourcesConfig == null) {
+            plugin.getLogger().warning("sourcesConfig не инициализирован. Пропускаем сохранение источников.");
+            return;
+        }
         List<Map<String, Object>> list = new ArrayList<>();
         for (RadiationSource source : sources.values()) {
             Map<String, Object> entry = new HashMap<>();
@@ -137,7 +141,6 @@ public class RadiationManager {
             list.add(entry);
         }
         sourcesConfig.set("sources", list);
-
         try {
             sourcesConfig.save(sourcesFile);
         } catch (IOException e) {
