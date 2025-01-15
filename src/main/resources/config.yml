@@ -25,3 +25,9 @@ radiation:
       damage_start: 80
       damage_interval: 3
       damage_amount: 5
+blocks:
+  radioactive_block:
+    type: minecraft:diamond_block
+    radius: 10
+    level: 3
+    power: 1.5

@@ -1,5 +1,7 @@
 package org.gezzon.grad;
 
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.gezzon.grad.radiation.RadiationManager;
 import org.gezzon.grad.radiation.RadiationTask;
@@ -22,13 +24,11 @@ import java.lang.reflect.Field;
 
 public class Grad extends JavaPlugin {
 
-    public class CustomFlags {
         public static final StateFlag RADIATION_1 = new StateFlag("radiation_1", false);
         public static final StateFlag RADIATION_2 = new StateFlag("radiation_2", false);
         public static final StateFlag RADIATION_3 = new StateFlag("radiation_3", false);
         public static final StateFlag RADIATION_4 = new StateFlag("radiation_4", false);
         public static final StateFlag RADIATION_5 = new StateFlag("radiation_5", false);
-    }
     private RadiationManager radiationManager;
     private RadiationTask radiationTask;
 
@@ -60,26 +60,20 @@ public class Grad extends JavaPlugin {
     }
 
     private void registerFlags() {
+        FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
         try {
-            Field flagField = Flags.class.getDeclaredField("REGISTRY");
-            flagField.setAccessible(true);
-            Flag<?>[] flags = {
-                    CustomFlags.RADIATION_1,
-                    CustomFlags.RADIATION_2,
-                    CustomFlags.RADIATION_3,
-                    CustomFlags.RADIATION_4,
-                    CustomFlags.RADIATION_5
-            };
-            for (Flag<?> flag : flags) {
-                com.sk89q.worldguard.protection.flags.registry.FlagRegistry registry =
-                        (com.sk89q.worldguard.protection.flags.registry.FlagRegistry) flagField.get(null);
-                registry.register(flag);
-            }
+            registry.register(RADIATION_1);
+            registry.register(RADIATION_2);
+            registry.register(RADIATION_3);
+            registry.register(RADIATION_4);
+            registry.register(RADIATION_5);
+            getLogger().info("Custom WorldGuard flags registered successfully.");
         } catch (Exception e) {
-            getLogger().warning("Не удалось зарегистрировать флаги WorldGuard!");
+            getLogger().warning("Failed to register custom WorldGuard flags!");
             e.printStackTrace();
         }
     }
+
 
     @Override
     public void onDisable() {

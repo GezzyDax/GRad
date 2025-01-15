@@ -15,7 +15,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.gezzon.grad.Grad;
-import org.gezzon.grad.Grad.CustomFlags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
 
 import java.util.HashMap;
