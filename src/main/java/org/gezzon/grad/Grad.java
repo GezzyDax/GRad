@@ -1,7 +1,9 @@
 package org.gezzon.grad;
 
 import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.flags.Flag;
 import com.sk89q.worldguard.protection.flags.IntegerFlag;
+import com.sk89q.worldguard.protection.flags.registry.FlagConflictException;
 import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.gezzon.grad.radiation.RadiationManager;
@@ -21,10 +23,9 @@ import org.gezzon.grad.listener.PlayerListener;
 
 public class Grad extends JavaPlugin {
 
-    public static final IntegerFlag RADIATION_FLAG = new IntegerFlag("radiation");
     private RadiationManager radiationManager;
     private RadiationTask radiationTask;
-
+    public static IntegerFlag RADIATION_FLAG;
 
 
     private static Grad instance;
@@ -55,14 +56,24 @@ public class Grad extends JavaPlugin {
     private void registerFlags() {
         FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
         try {
-            if (registry.get("radiation") == null) {
-                registry.register(RADIATION_FLAG);
-                getLogger().info("Custom WorldGuard flag 'radiation' registered successfully.");
+            // Создаём флаг с именем "radiation" (IntegerFlag)
+            IntegerFlag flag = new IntegerFlag("radiation");
+            registry.register(flag);
+            // Устанавливаем наш статический флаг, если ошибок не возникло
+            RADIATION_FLAG = flag;
+            getLogger().info("Custom WorldGuard flag 'radiation' registered successfully.");
+        } catch (FlagConflictException e) {
+            // Если другой плагин уже зарегистрировал флаг с таким именем
+            Flag<?> existing = registry.get("radiation");
+            if (existing instanceof IntegerFlag) {
+                RADIATION_FLAG = (IntegerFlag) existing;
+                getLogger().warning("Custom flag 'radiation' already registered by another plugin. Using existing flag.");
+            } else {
+                // Если типы не совпадают, это критическая ошибка
+                getLogger().severe("Flag conflict detected for 'radiation' with incompatible type. Plugin may not work correctly.");
             }
-        } catch (IllegalStateException e) {
-            getLogger().warning("Failed to register custom flag 'radiation': " + e.getMessage());
         } catch (Exception e) {
-            getLogger().warning("An unexpected error occurred while registering the 'radiation' flag.");
+            getLogger().severe("An unexpected error occurred while registering the 'radiation' flag.");
             e.printStackTrace();
         }
     }
